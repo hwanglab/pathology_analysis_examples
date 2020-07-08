@@ -5,7 +5,7 @@
 
 (2) you need install python toolboxes by yourself
 
-(3) knowledge about image processing would help you understand much easier
+(3) knowledge about image processing would help you understand my examples much easier
 
 if you have questions, please contact: Hongming Xu, mxu@ualberta.ca
 
