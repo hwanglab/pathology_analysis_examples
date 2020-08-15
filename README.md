@@ -3,7 +3,7 @@
 
 (1) you need have some experience in python programming 
 
-if you are the beginner to Python programming, you probably learn from my previously released videos at: 
+if you are the beginner to Python programming, you could learn from my previously released videos at: 
 
 https://www.youtube.com/channel/UCF9S7wSWHBYQZ7Arp71XaJg?view_as=subscriber
 
