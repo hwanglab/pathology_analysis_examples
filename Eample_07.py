@@ -1,5 +1,5 @@
 '''
-purpose: morphological processing+watershed segmentation
+purpose: measure properties of segmented cell nuclei
 
 author: Hongming Xu
 email: mxu@ualberta.ca
@@ -14,6 +14,8 @@ from skimage.morphology import remove_small_objects, remove_small_holes, \
 
 from skimage.segmentation import find_boundaries
 from scipy import ndimage as ndi
+from skimage.measure import regionprops,regionprops_table
+import pandas as pd
 
 I=plt.imread('TCGA-3M-AB46-01Z-00-DX1.jpg')
 
@@ -24,45 +26,13 @@ I_gray=(rgb2gray(I)*255).astype(np.uint8)
 # ostu's threhsold segmentation
 thresh=threshold_otsu(I_gray)
 bw_n0=I_gray<thresh
+
 # remove small binary nosiy regions with the size less than noise_size
-noise_size=200
-bw_n1=remove_small_objects(bw_n0, noise_size, connectivity=8)
-
-# find the nuclei boundaries
-bb=find_boundaries(bw_n1)
-I2=I.copy()  # use copy() function here to ensure I2 is writable
-I2[:,:,0][bb]=255
-I2[:,:,1][bb]=0
-I2[:,:,2][bb]=0
-
-plt.subplot(221)
-plt.imshow(bw_n0, cmap='gray')
-plt.subplot(222)
-plt.imshow(bw_n1, cmap='gray')
-plt.subplot(223)
-plt.imshow(I2)
-
-
-# practice morphological processing
-# You should observe what the purpose of opening and closing operations?????
-bw_n2=opening(bw_n1,square(5))
-bw_n3=closing(bw_n2,square(5))
-bw_n3=remove_small_objects(bw_n3, noise_size, connectivity=8)
+bw_n2=opening(bw_n0,square(3))
+noise_size=150
+bw_n3=remove_small_objects(bw_n2, noise_size, connectivity=8)
 bw_n4=remove_small_holes(bw_n3,noise_size/2)
-plt.subplot(224)
-plt.imshow(bw_n4,cmap='gray')
-plt.pause(3)
-plt.close()
 
-bb=find_boundaries(bw_n4)
-I2=I.copy()  # use copy() function here to ensure I2 is writable
-I2[:,:,0][bb]=255
-I2[:,:,1][bb]=255
-I2[:,:,2][bb]=0
-
-plt.subplot(221)
-plt.imshow(I2)
-plt.close()
 
 ## iteratively erosion algorithm to find markers for watershed
 bw_nn=label(bw_n4)
@@ -71,7 +41,7 @@ bw_mark=np.zeros(bw_n4.shape,dtype=bool)
 for tt in range(1,obj_n+1):
     bw_temp=np.zeros(bw_n4.shape)
     bw_temp[bw_nn==tt]=1
-    thr=np.sum(bw_temp)*0.1
+    thr=np.sum(bw_temp)*0.25
     while np.sum(bw_temp)>thr:
         bw_temp=erosion(bw_temp,square(3))
     bw_mark[bw_temp==1]=1
@@ -80,12 +50,6 @@ for tt in range(1,obj_n+1):
 markers = ndi.label(bw_mark)[0]
 distance = -ndi.distance_transform_edt(bw_n4)
 labels = watershed(distance, markers=markers, mask=bw_n4)
-
-[r,c]=np.where(bw_mark==1)
-plt.imshow(distance,cmap='gray')
-plt.plot(c,r,'r.')
-plt.show()
-
 
 bb=find_boundaries(labels)
 I2=I.copy()  # use copy() function here to ensure I2 is writable
@@ -96,8 +60,26 @@ I2[:,:,0][bw_mark]=0
 I2[:,:,1][bw_mark]=0
 I2[:,:,2][bw_mark]=255
 
-
 plt.imshow(I2)
+plt.pause(2)
+plt.close()
 
+##### measure the properties of segmented cell nuclei from the mask labels###
+props = regionprops_table(labels,intensity_image=I_gray, properties=['area','centroid','eccentricity','major_axis_length',
+                                             'minor_axis_length','orientation','perimeter','solidity',
+                                             'mean_intensity'])
+df=pd.DataFrame(props)
+
+# visualization for better understanding
+plt.imshow(I)
+plt.plot(df['centroid-1'],df['centroid-0'],'r*') # plot nuclei centroids on the image
 plt.pause(3)
 plt.close()
+
+plt.hist(df['area'])   # plot histogram of nuclei size
+plt.xlabel('the size of cell nuclei')
+plt.ylabel('the number of cell nuclei')
+plt.title('histogram of nuclei size')
+plt.pause(3)
+plt.close()
+
